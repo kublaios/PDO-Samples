@@ -2,6 +2,17 @@
 
 require_once __dir__."/Connection.php";
 
+// this function helps creating imploded strings with given seperator
+function placeholders($text, $count = 0, $separator = ",") {
+  $result = array();
+  if ($count > 0) {
+    for ($i = 0; $i < $count; $i++) {
+      array_push($result, $text);
+    }
+  }
+  return implode($separator, $result);
+}
+
 /**
  * ObjectHandler Class
  * For batch operations on objects
@@ -18,48 +29,40 @@ class ObjectHandler {
     $this->db = $this->db->dbConnect();
   }
 
-  // Record first two objects of given Object array
-  // This function rolls back in case any error occurs
-  public function recordTwoObjects($objects = array()) {
-    // Begin transaction to rollback in case
-    $this->db->beginTransaction();
-    // create first query
-    $sql1 = "INSERT INTO `latest` (`id`, `name`) VALUES (?,?),(?,?) ";
-    // prepare the statement for first query with params
-    $stmt = $this->db->prepare($sql1);
-    $stmt->bindParam(1, $objects[0]->id);
-    $stmt->bindParam(2, $objects[0]->name);
-    $stmt->bindParam(3, $objects[1]->id);
-    $stmt->bindParam(4, $objects[1]->name);
+  // Record all objects of given Object array
+  public function recordObjects($objects = array()) {
+    // return true if there is no object
+    if (count($objects) == 0) return true;
+    // we are going to need question marks in the query
+    $marks = array();
+    // we also should store insert values to an array
+    $values = array();
+    foreach ($objects as $obj) {
+      $objArray = array(
+        "name" => $obj->name // db_field_name => object_property
+        );
+      // generate question marks string
+      $markString = "(".placeholders("?", count($objArray)).")"; // output is array("(?)",...)
+      // we store these strings to use in query later on
+      array_push($marks, $markString);
+      // we collect the values to be inserted
+      $values = array_merge($values, array_values($objArray));
+    }
+
+    // create query with question marks
+    $sql = "INSERT INTO `table` (`name`) VALUES ".implode(",", $marks);
+    // prepare the statement with the query
+    $stmt = $this->db->prepare($sql);
+    
     try {
-      // this statement should work
-      if ($stmt->execute()) {
-        // create second query
-        $sql2 = "INSERT INTO `table` (`id`, `name`) VALUES (?,?),(?,?) ";
-        // reprapere the statement with second query
-        $stmt = $this->db->prepare($sql2);
-        $stmt->bindParam(1, $objects[0]->id);
-        $stmt->bindParam(2, $objects[0]->name);
-        $stmt->bindParam(3, $objects[1]->id);
-        $stmt->bindParam(4, $objects[1]->name);
-        // this statement should raise duplicate key error
-        if ($stmt->execute()) {
-          // if has success, commit transaction
-          $this->db->commit();
-          echo "New record ID: ".$this->db->lastInsertId();
-        } else {
-          // if fails, rollback transaction (auto-commits)
-          $this->db->rollBack();
-          echo "Could not insert";
-        } 
+      // execute the statement by passing the insert values
+      if ($stmt->execute($values)) {
+        // marks array would give us the number of records correctly
+        echo count($marks)." records have been added.";
       }
     } catch (PDOException $e) {
-      // if fails, rollback transaction (auto-commits)
-      $this->db->rollBack();
       echo "PDO error: ".$e->getMessage();
     } catch (Exception $e) {
-      // if fails, rollback transaction (auto-commits)
-      $this->db->rollBack();
       echo "Error: ".$e->getMessage();
     }
   }
