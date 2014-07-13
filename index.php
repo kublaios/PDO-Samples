@@ -4,10 +4,10 @@ require_once __dir__."/Object.php";
 require_once __dir__."/ObjectHandler.php";
 
 $insertVals = array(
-  new Object(null, "an object"),
-  new Object(null, "another object"),
-  new Object(null, "some object")
+  new Object(4, "updated"),
+  new Object(5, "updated"),
+  new Object(6, "updated")
   );
 
 $oHandler = new ObjectHandler();
-$oHandler->recordObjects($insertVals);
+$oHandler->updateAllObjects($insertVals);

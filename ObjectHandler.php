@@ -66,4 +66,49 @@ class ObjectHandler {
       echo "Error: ".$e->getMessage();
     }
   }
+
+  // update all objects of given array
+  public function updateAllObjects($objects = array()) {
+    // return true if there is no object
+    if (count($objects) == 0) return true;
+
+    // we are going to need question marks in the query
+    $marks = array();
+    // we also should store insert values to an array
+    $values = array();
+    foreach ($objects as $obj) {
+      $objArray = array(
+        "id" => $obj->id, // db_field_name => object_property
+        "name" => $obj->name
+        );
+      // generate question marks string
+      $markString = "(".placeholders("?", count($objArray)).")"; // output is array("(?)",...)
+      // we store these strings to use in query later on
+      array_push($marks, $markString);
+      // we collect the values to be inserted
+      $values = array_merge($values, array_values($objArray));
+    }
+
+    // create insert query with update case
+    $sql = "INSERT INTO `table` ".
+    "(`id`, `name`) " . 
+    "VALUES " . implode(',', $marks).
+    " ON DUPLICATE KEY UPDATE ".
+    "`name` = VALUES(`name`) ";
+
+    // prepare the statement with the query
+    $stmt = $this->db->prepare($sql);
+    
+    try {
+      // execute the statement by passing the update values
+      if ($stmt->execute($values)) {
+        // marks array would give us the number of records correctly
+        echo count($marks)." records have been updated.";
+      }
+    } catch (PDOException $e) {
+      echo "PDO error: ".$e->getMessage();
+    } catch (Exception $e) {
+      echo "Error: ".$e->getMessage();
+    }
+  }
 }
