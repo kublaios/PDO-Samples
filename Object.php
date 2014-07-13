@@ -11,7 +11,7 @@ require_once __dir__."/Connection.php";
  */
 class Object {
   // class variables
-  public $db;
+  private $db;
   public $id;
   public $name;
 
